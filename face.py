@@ -5,38 +5,32 @@ import mediapipe as mp
 mp_drawing = mp.solutions.drawing_utils
 mp_face_mesh = mp.solutions.face_mesh
 
-# 0 is the default built-in webcam. Try 1 or 2 if a window doesn't appear.
+# 0 is the default webcam. Change to 1 or 2 if it still doesn't pop up.
 cap = cv2.VideoCapture(0)
 
 if not cap.isOpened():
-    print("Error: Could not open webcam at index 0.")
+    print("Error: Could not open webcam source.")
     exit()
+
+print("Webcam successfully connected. Initializing Face Mesh...")
 
 # Configure the Face Mesh model
 with mp_face_mesh.FaceMesh(
     max_num_faces=1,
-    refine_landmarks=True,  # Set to True for eye iris tracking
+    refine_landmarks=True,  
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5
 ) as face_mesh:
     
-    print("Press 'ESC' on the video window to exit.")
-    empty_frame_count = 0
+    print("Mesh initialized. Loop started. Press 'ESC' on the video window to exit.")
     
     while cap.isOpened():
         success, image = cap.read()
         
         if not success:
-            empty_frame_count += 1
-            print(f"Warning: Empty camera frame detected ({empty_frame_count}).")
-            # If it fails 10 times in a row, the camera index is likely wrong
-            if empty_frame_count > 10:
-                print("Error: Too many empty frames. Try changing cv2.VideoCapture(0) to 1 or 2.")
-                break
+            print("Warning: Received an empty camera frame. Continuing to retry...")
+            cv2.waitKey(100) # Wait a moment before retrying
             continue
-        
-        # Reset counter on a successful frame read
-        empty_frame_count = 0
 
         # Optimize performance by marking the image as unwriteable
         image.flags.writeable = False
@@ -61,11 +55,12 @@ with mp_face_mesh.FaceMesh(
         # Display the output
         cv2.imshow('MediaPipe Face Mesh', cv2.flip(image, 1))
         
-        # Increased waitKey to 30ms to ensure the Windows GUI has time to render
+        # Increased to 30ms to give Windows time to spawn and render the window frame
         if cv2.waitKey(30) & 0xFF == 27:
+            print("ESC key pressed. Exiting...")
             break
 
 # Clean up and close windows properly
 cap.release()
 cv2.destroyAllWindows()
-print("Script closed safely.")
+print("Program finished.")
