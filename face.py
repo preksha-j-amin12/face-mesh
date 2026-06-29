@@ -6,15 +6,16 @@ print("1. Initializing MediaPipe modules...")
 mp_drawing = mp.solutions.drawing_utils
 mp_face_mesh = mp.solutions.face_mesh
 
-print("2. Connecting to webcam index 0...")
-cap = cv2.VideoCapture(0)
+# Try index 0 first. If the window closes right away, change this to 1 or 2.
+camera_index = 0
+print(f"2. Connecting to webcam index {camera_index}...")
+cap = cv2.VideoCapture(camera_index)
 
 if not cap.isOpened():
-    print("Error: Could not open webcam source at index 0. Try changing to 1 or 2.")
+    print(f"Error: Could not open webcam source at index {camera_index}.")
     sys.exit()
 
-print("3. Instantiating Face Mesh object directly...")
-# Using direct assignment instead of a 'with' block to isolate the crash point
+print("3. Instantiating Face Mesh object...")
 face_mesh = mp_face_mesh.FaceMesh(
     max_num_faces=1,
     refine_landmarks=True,
@@ -24,21 +25,35 @@ face_mesh = mp_face_mesh.FaceMesh(
 
 print("4. Setup complete. Starting video loop... (Press ESC on the window to exit)")
 
+empty_frame_count = 0
+
 try:
     while cap.isOpened():
         success, image = cap.read()
+        
         if not success:
-            print("Warning: Received an empty frame from camera.")
+            empty_frame_count += 1
+            print(f"Warning: Received an empty frame from camera ({empty_frame_count}/10).")
+            # Force close if the camera is active but sending bad data
+            if empty_frame_count > 10:
+                print("\nError: Too many consecutive empty frames. Your webcam might be busy or blocked.")
+                print(f"Try changing camera_index = 0 to 1 on line 9.")
+                break
+            cv2.waitKey(100) # Give the hardware a moment to recover
             continue
+        
+        # Reset counter on a successful frame read
+        empty_frame_count = 0
 
-        # Convert image color spaces for processing
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image.flags.writeable = False
-        results = face_mesh.process(image)
+        # Flip the image horizontally for a mirror view, convert to RGB
+        image = cv2.flip(image, 1)
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image_rgb.flags.writeable = False
+        
+        results = face_mesh.process(image_rgb)
 
-        # Revert changes to render annotations
+        # Allow drawing on the original image
         image.flags.writeable = True
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
         if results.multi_face_landmarks:
             mesh_spec = mp_drawing.DrawingSpec(color=(255, 255, 0), thickness=1, circle_radius=1)
@@ -51,10 +66,10 @@ try:
                     connection_drawing_spec=mesh_spec
                 )
 
-        # Show the processed image
-        cv2.imshow('MediaPipe Face Mesh', cv2.flip(image, 1))
+        # Show the final frame
+        cv2.imshow('MediaPipe Face Mesh', image)
 
-        # Wait 30ms for a key press
+        # 30ms delay handles Windows GUI scaling loops smoothly
         if cv2.waitKey(30) & 0xFF == 27:
             print("ESC key detected. Exiting program.")
             break
