@@ -1,2 +1,2 @@
-opencv-python
-mediapipe
+opencv-python==4.8.0.74
+mediapipe==0.10.14
