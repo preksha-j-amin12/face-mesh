@@ -1,46 +1,45 @@
 import cv2
 import mediapipe as mp
+import sys
 
-# Initialize MediaPipe Face Mesh and Drawing utilities
+print("1. Initializing MediaPipe modules...")
 mp_drawing = mp.solutions.drawing_utils
 mp_face_mesh = mp.solutions.face_mesh
 
-# 0 is the default webcam. Change to 1 or 2 if it still doesn't pop up.
+print("2. Connecting to webcam index 0...")
 cap = cv2.VideoCapture(0)
 
 if not cap.isOpened():
-    print("Error: Could not open webcam source.")
-    exit()
+    print("Error: Could not open webcam source at index 0. Try changing to 1 or 2.")
+    sys.exit()
 
-print("Webcam successfully connected. Initializing Face Mesh...")
-
-# Configure the Face Mesh model
-with mp_face_mesh.FaceMesh(
+print("3. Instantiating Face Mesh object directly...")
+# Using direct assignment instead of a 'with' block to isolate the crash point
+face_mesh = mp_face_mesh.FaceMesh(
     max_num_faces=1,
-    refine_landmarks=True,  
+    refine_landmarks=True,
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5
-) as face_mesh:
-    
-    print("Mesh initialized. Loop started. Press 'ESC' on the video window to exit.")
-    
+)
+
+print("4. Setup complete. Starting video loop... (Press ESC on the window to exit)")
+
+try:
     while cap.isOpened():
         success, image = cap.read()
-        
         if not success:
-            print("Warning: Received an empty camera frame. Continuing to retry...")
-            cv2.waitKey(100) # Wait a moment before retrying
+            print("Warning: Received an empty frame from camera.")
             continue
 
-        # Optimize performance by marking the image as unwriteable
-        image.flags.writeable = False
+        # Convert image color spaces for processing
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image.flags.writeable = False
         results = face_mesh.process(image)
 
-        # Draw the face mesh annotations on the image
+        # Revert changes to render annotations
         image.flags.writeable = True
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        
+
         if results.multi_face_landmarks:
             mesh_spec = mp_drawing.DrawingSpec(color=(255, 255, 0), thickness=1, circle_radius=1)
             for face_landmarks in results.multi_face_landmarks:
@@ -51,16 +50,21 @@ with mp_face_mesh.FaceMesh(
                     landmark_drawing_spec=mesh_spec,
                     connection_drawing_spec=mesh_spec
                 )
-        
-        # Display the output
+
+        # Show the processed image
         cv2.imshow('MediaPipe Face Mesh', cv2.flip(image, 1))
-        
-        # Increased to 30ms to give Windows time to spawn and render the window frame
+
+        # Wait 30ms for a key press
         if cv2.waitKey(30) & 0xFF == 27:
-            print("ESC key pressed. Exiting...")
+            print("ESC key detected. Exiting program.")
             break
 
-# Clean up and close windows properly
-cap.release()
-cv2.destroyAllWindows()
-print("Program finished.")
+except Exception as e:
+    print(f"\nAn error occurred during runtime: {e}")
+
+finally:
+    print("Cleaning up resources...")
+    face_mesh.close()
+    cap.release()
+    cv2.destroyAllWindows()
+    print("Program completely shut down.")
