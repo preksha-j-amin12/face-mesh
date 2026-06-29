@@ -5,11 +5,11 @@ import mediapipe as mp
 mp_drawing = mp.solutions.drawing_utils
 mp_face_mesh = mp.solutions.face_mesh
 
-# 0 is usually the default built-in webcam. Change to 1 if you have an external webcam.
+# 0 is the default built-in webcam. Try 1 or 2 if a window doesn't appear.
 cap = cv2.VideoCapture(0)
 
 if not cap.isOpened():
-    print("Error: Could not open webcam. If you have an external camera, try changing cap = cv2.VideoCapture(0) to 1.")
+    print("Error: Could not open webcam at index 0.")
     exit()
 
 # Configure the Face Mesh model
@@ -21,14 +21,24 @@ with mp_face_mesh.FaceMesh(
 ) as face_mesh:
     
     print("Press 'ESC' on the video window to exit.")
+    empty_frame_count = 0
     
     while cap.isOpened():
         success, image = cap.read()
+        
         if not success:
-            print("Ignoring empty camera frame.")
+            empty_frame_count += 1
+            print(f"Warning: Empty camera frame detected ({empty_frame_count}).")
+            # If it fails 10 times in a row, the camera index is likely wrong
+            if empty_frame_count > 10:
+                print("Error: Too many empty frames. Try changing cv2.VideoCapture(0) to 1 or 2.")
+                break
             continue
+        
+        # Reset counter on a successful frame read
+        empty_frame_count = 0
 
-        # Optimize performance by marking the image as unwriteable to pass by reference
+        # Optimize performance by marking the image as unwriteable
         image.flags.writeable = False
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         results = face_mesh.process(image)
@@ -38,11 +48,8 @@ with mp_face_mesh.FaceMesh(
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         
         if results.multi_face_landmarks:
-            # Custom style for the points/lines (Light blue/cyan mesh)
             mesh_spec = mp_drawing.DrawingSpec(color=(255, 255, 0), thickness=1, circle_radius=1)
-            
             for face_landmarks in results.multi_face_landmarks:
-                # Draws the main facial tessellation
                 mp_drawing.draw_landmarks(
                     image=image,
                     landmark_list=face_landmarks,
@@ -51,13 +58,14 @@ with mp_face_mesh.FaceMesh(
                     connection_drawing_spec=mesh_spec
                 )
         
-        # Display the output (flipped horizontally for a natural mirror effect)
+        # Display the output
         cv2.imshow('MediaPipe Face Mesh', cv2.flip(image, 1))
         
-        # Break the loop when 'ESC' key (27) is pressed
-        if cv2.waitKey(5) & 0xFF == 27:
+        # Increased waitKey to 30ms to ensure the Windows GUI has time to render
+        if cv2.waitKey(30) & 0xFF == 27:
             break
 
 # Clean up and close windows properly
 cap.release()
 cv2.destroyAllWindows()
+print("Script closed safely.")
