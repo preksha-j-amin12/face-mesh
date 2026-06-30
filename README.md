@@ -4,11 +4,11 @@ A simple Python script that detects and overlays a 468-point light blue mesh on 
 
 ## How to Use
 
-1. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate
-   ```
+1. # Create a new environment named "facemesh" with Python
+conda create --name facemesh python=3.10 -y
+
+# Activate the new environment
+conda activate facemesh
 
 2. Install the dependencies:
    ```bash
