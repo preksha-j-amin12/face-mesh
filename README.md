@@ -2,14 +2,18 @@
 
 A simple Python script that detects and overlays a 468-point light blue mesh on your face in real-time using your webcam.
 
-## How to Use
+# Create the virtual environment
+python -m venv venv
 
-1. # Create a new environment named "facemesh" with Python
-conda create --name facemesh python=3.10 -y
+# Activate it:
+# On macOS/Linux:
+source venv/bin/activate
 
-# Activate the new environment
-conda activate facemesh
+# On Windows (Command Prompt):
+venv\Scripts\activate.bat
 
+# On Windows (PowerShell):
+venv\Scripts\Activate.ps1
 2. Install the dependencies:
    ```bash
    pip install -r requirements.txt
